@@ -1,0 +1,18 @@
+{
+  // El operador puede crear proxies con tag:k8s.
+  "tagOwners": {
+    "tag:k8s-operator": ["autogroup:admin"],
+    "tag:k8s": ["tag:k8s-operator"],
+    "tag:aws-front": ["autogroup:admin"]
+  },
+
+  // La tailnet se usa solamente para este laboratorio. Se mantiene la regla
+  // inicial abierta para que la clase se concentre en el flujo hibrido.
+  "grants": [
+    {
+      "src": ["*"],
+      "dst": ["*"],
+      "ip": ["*"]
+    }
+  ]
+}

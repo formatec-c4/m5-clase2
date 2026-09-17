@@ -1,0 +1,204 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bank-core-code
+  namespace: formatec-bank
+data:
+  app.py: |
+    import hmac
+    import json
+    import os
+    import time
+    from decimal import Decimal
+
+    import psycopg
+    from fastapi import Depends, FastAPI, Header, HTTPException, Request
+    from psycopg.rows import dict_row
+    from pydantic import BaseModel, Field
+
+    app = FastAPI(title="Banco Choco Core", version="1.0")
+
+    @app.middleware("http")
+    async def trace_request(request: Request, call_next):
+        started = time.monotonic()
+        request_id = request.headers.get("x-request-id", "sin-request-id")
+        response = await call_next(request)
+        if request.url.path != "/health":
+            print(json.dumps({
+                "event": "core_request",
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status": response.status_code,
+                "pod": os.environ.get("POD_NAME", "unknown"),
+                "duration_ms": round((time.monotonic() - started) * 1000, 1),
+            }), flush=True)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+    def connect():
+        return psycopg.connect(
+            host=os.environ["DB_HOST"],
+            dbname=os.environ["DB_NAME"],
+            user=os.environ["DB_USER"],
+            password=os.environ["DB_PASSWORD"],
+            row_factory=dict_row,
+        )
+
+    def authorize(x_lab_token: str = Header(default="")):
+        if not hmac.compare_digest(x_lab_token, os.environ["API_TOKEN"]):
+            raise HTTPException(status_code=401, detail="invalid token")
+
+    class Transfer(BaseModel):
+        from_id: int
+        to_id: int
+        amount: Decimal = Field(gt=0, decimal_places=2)
+
+    @app.get("/health")
+    def health():
+        with connect() as conn:
+            conn.execute("SELECT 1")
+        return {"status": "ok"}
+
+    @app.get("/api/meta", dependencies=[Depends(authorize)])
+    def meta():
+        return {"core_pod": os.environ.get("POD_NAME", "unknown"), "core_environment": "kubernetes-local"}
+
+    @app.get("/api/accounts", dependencies=[Depends(authorize)])
+    def accounts():
+        with connect() as conn:
+            rows = conn.execute("SELECT id, holder, balance FROM accounts ORDER BY id").fetchall()
+        return rows
+
+    @app.post("/api/transfers", dependencies=[Depends(authorize)])
+    def transfer(payload: Transfer, idempotency_key: str = Header(min_length=8)):
+        if payload.from_id == payload.to_id:
+            raise HTTPException(status_code=400, detail="source and destination must differ")
+        with connect() as conn:
+            previous = conn.execute(
+                "SELECT id FROM transfers WHERE idempotency_key = %s", (idempotency_key,)
+            ).fetchone()
+            if previous:
+                return {"transfer_id": previous["id"], "duplicate": True, "core_pod": os.environ["POD_NAME"]}
+
+            ids = sorted([payload.from_id, payload.to_id])
+            locked = conn.execute(
+                "SELECT id, balance FROM accounts WHERE id = ANY(%s) ORDER BY id FOR UPDATE", (ids,)
+            ).fetchall()
+            by_id = {row["id"]: row["balance"] for row in locked}
+            if len(by_id) != 2:
+                raise HTTPException(status_code=404, detail="account not found")
+            if by_id[payload.from_id] < payload.amount:
+                raise HTTPException(status_code=409, detail="insufficient funds")
+
+            conn.execute("UPDATE accounts SET balance = balance - %s WHERE id = %s", (payload.amount, payload.from_id))
+            conn.execute("UPDATE accounts SET balance = balance + %s WHERE id = %s", (payload.amount, payload.to_id))
+            row = conn.execute(
+                "INSERT INTO transfers (idempotency_key, from_id, to_id, amount) VALUES (%s,%s,%s,%s) RETURNING id",
+                (idempotency_key, payload.from_id, payload.to_id, payload.amount),
+            ).fetchone()
+        return {"transfer_id": row["id"], "duplicate": False, "core_pod": os.environ["POD_NAME"]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-core
+  namespace: formatec-bank
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bank-core
+  template:
+    metadata:
+      labels:
+        app: bank-core
+    spec:
+      initContainers:
+        - name: install-dependencies
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - python -m pip install --no-cache-dir --target=/deps fastapi==0.115.12 uvicorn==0.34.2 'psycopg[binary]==3.2.9'
+          volumeMounts:
+            - name: deps
+              mountPath: /deps
+      containers:
+        - name: api
+          image: python:3.12-slim
+          command: ["python", "-m", "uvicorn", "app:app", "--host=0.0.0.0", "--port=8000", "--no-access-log"]
+          workingDir: /app
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: PYTHONPATH
+              value: /deps
+            - name: DB_HOST
+              value: bank-db
+            - name: DB_NAME
+              value: bank
+            - name: DB_USER
+              value: bank
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bank-lab-secrets
+                  key: db-password
+            - name: API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bank-lab-secrets
+                  key: api-token
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: code
+              mountPath: /app
+            - name: deps
+              mountPath: /deps
+      volumes:
+        - name: code
+          configMap:
+            name: bank-core-code
+        - name: deps
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bank-core
+  namespace: formatec-bank
+  annotations:
+    tailscale.com/hostname: "core-bancario"
+spec:
+  type: LoadBalancer
+  loadBalancerClass: tailscale
+  selector:
+    app: bank-core
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

@@ -1,0 +1,21 @@
+name: banco-choco
+
+services:
+  frontend:
+    build:
+      context: .
+    image: formatec/banco-choco-front:v1
+    restart: unless-stopped
+    volumes:
+      - /opt/formatec-bank/config:/app/config:ro
+    ports:
+      - "80:8080"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen("http://127.0.0.1:8080/health")
+      interval: 10s
+      timeout: 3s
+      retries: 5

@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Banco Choco</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17212b;
+      --muted: #667085;
+      --line: #d8e0df;
+      --paper: #f4f7f6;
+      --white: #ffffff;
+      --forest: #123c35;
+      --mint: #b9ead8;
+      --coral: #f06f5f;
+      --yellow: #f4c95d;
+      --red: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    header {
+      height: 64px;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      color: var(--white);
+      background: var(--forest);
+      border-radius: 7px;
+      font-weight: 800;
+    }
+    .brand strong { font-size: 19px; }
+    .environment { color: var(--muted); font-size: 13px; }
+    main { max-width: 1080px; margin: 28px auto; padding: 0 22px 28px; }
+    h1 { margin: 0; font-size: 26px; }
+    .lead { margin: 6px 0 20px; color: var(--muted); }
+    .status {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      padding: 12px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+    .dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--yellow);
+      margin-right: 7px;
+    }
+    .dot.ok { background: #16865b; }
+    .dot.bad { background: var(--red); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .dashboard {
+      display: grid;
+      grid-template-columns: minmax(300px, 420px) minmax(340px, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+    .section-title {
+      margin: 0 0 12px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .bank-card {
+      aspect-ratio: 1.586;
+      width: 100%;
+      max-width: 420px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: var(--white);
+      background: var(--forest);
+      border-radius: 8px;
+      box-shadow: 0 12px 26px rgba(18, 60, 53, 0.16);
+      overflow: hidden;
+      position: relative;
+    }
+    .bank-card::after {
+      content: "";
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      right: -66px;
+      bottom: -72px;
+      border: 28px solid var(--coral);
+      border-radius: 50%;
+      opacity: 0.9;
+    }
+    .card-top, .card-bottom {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      position: relative;
+      z-index: 1;
+    }
+    .card-brand { font-size: 16px; font-weight: 800; }
+    .card-type { font-size: 11px; letter-spacing: 0; opacity: 0.8; }
+    .chip {
+      width: 43px;
+      height: 32px;
+      border-radius: 6px;
+      background: var(--yellow);
+      border: 1px solid rgba(23, 33, 43, 0.35);
+      position: relative;
+      z-index: 1;
+    }
+    .chip::before, .chip::after {
+      content: "";
+      position: absolute;
+      background: rgba(23, 33, 43, 0.26);
+    }
+    .chip::before { width: 100%; height: 1px; top: 15px; left: 0; }
+    .chip::after { width: 1px; height: 100%; top: 0; left: 21px; }
+    .card-number {
+      margin-top: auto;
+      padding: 18px 0 16px;
+      font-size: 19px;
+      font-weight: 650;
+      letter-spacing: 0;
+      position: relative;
+      z-index: 1;
+    }
+    .card-label { display: block; font-size: 9px; opacity: 0.62; margin-bottom: 3px; }
+    .card-value { font-size: 12px; font-weight: 650; }
+    .card-network { font-size: 14px; font-weight: 800; align-self: flex-end; }
+    .balance-block {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .balance-label { color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+    .balance { color: var(--forest); font-size: 30px; font-weight: 800; }
+    .account-pill {
+      padding: 8px 10px;
+      background: var(--mint);
+      color: var(--forest);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .secondary-account {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .secondary-account strong { display: block; margin-top: 4px; font-size: 18px; }
+    .panel {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+    }
+    .panel h2 { margin: 0 0 5px; font-size: 19px; }
+    .panel-copy { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+    form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    label { font-size: 12px; color: var(--muted); }
+    input {
+      width: 100%;
+      min-height: 42px;
+      margin-top: 6px;
+      padding: 10px 11px;
+      color: var(--ink);
+      background: var(--white);
+      border: 1px solid #b7c4c1;
+      border-radius: 6px;
+      font: inherit;
+    }
+    input:focus { outline: 2px solid var(--mint); border-color: var(--forest); }
+    button {
+      grid-column: 1 / -1;
+      min-height: 44px;
+      color: var(--white);
+      background: var(--forest);
+      border: 0;
+      border-radius: 6px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    button:hover { background: #0d2f2a; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    #message {
+      min-height: 22px;
+      margin-top: 14px;
+      color: var(--forest);
+      font-size: 13px;
+    }
+    .route-box {
+      margin-top: 18px;
+      padding: 14px;
+      background: #f7faf9;
+      border-left: 3px solid var(--coral);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    footer { margin-top: 26px; color: #7b8794; font-size: 12px; }
+    @media (max-width: 820px) {
+      .dashboard { grid-template-columns: 1fr; }
+      .bank-card { max-width: 460px; }
+    }
+    @media (max-width: 520px) {
+      header { padding: 0 18px; }
+      .environment { display: none; }
+      main { margin-top: 22px; padding: 0 16px 24px; }
+      form { grid-template-columns: 1fr; }
+      .bank-card { padding: 20px; }
+      .card-number { font-size: 16px; }
+      .balance-block { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="brand-mark">C</span><strong>Banco Choco</strong></div>
+    <span class="environment">Entorno educativo · datos ficticios</span>
+  </header>
+  <main>
+    <h1>Hola, Martina</h1>
+    <p class="lead">Este es el resumen de tus cuentas.</p>
+
+    <section class="status">
+      <span><i class="dot ok"></i>Canal AWS disponible</span>
+      <span><i id="core-dot" class="dot"></i><b id="core-text">Verificando core...</b></span>
+      <span class="muted" id="route"></span>
+    </section>
+
+    <section class="dashboard">
+      <div class="overview">
+        <h2 class="section-title">Tu tarjeta virtual</h2>
+        <article class="bank-card" aria-label="Tarjeta virtual Banco Choco">
+          <div class="card-top">
+            <span class="card-brand">Banco Choco</span>
+            <span class="card-type">VIRTUAL</span>
+          </div>
+          <div class="chip" aria-hidden="true"></div>
+          <div class="card-number">5412 •••• •••• 9087</div>
+          <div class="card-bottom">
+            <div><span class="card-label">TITULAR</span><span class="card-value">MARTINA DEMO</span></div>
+            <div><span class="card-label">VÁLIDA HASTA</span><span class="card-value">09/29</span></div>
+            <span class="card-network">CHOCO</span>
+          </div>
+        </article>
+
+        <div class="balance-block">
+          <div>
+            <div class="balance-label">Saldo disponible</div>
+            <div class="balance" id="balance-1">--</div>
+            <div class="muted" id="holder-1">Cargando...</div>
+          </div>
+          <span class="account-pill">Cuenta 1</span>
+        </div>
+
+        <div class="secondary-account">
+          <div>
+            <span class="muted">Ahorro Choco</span>
+            <strong id="balance-2">--</strong>
+          </div>
+          <div class="muted" id="holder-2">Cargando...</div>
+        </div>
+      </div>
+
+      <article class="panel">
+        <h2>Enviar dinero</h2>
+        <p class="panel-copy">Transferencia simulada entre las cuentas del laboratorio.</p>
+        <form id="transfer-form">
+          <label>Cuenta de origen<input id="from" type="number" value="1" min="1" required></label>
+          <label>Cuenta de destino<input id="to" type="number" value="2" min="1" required></label>
+          <label>Monto en ARS<input id="amount" type="number" value="100" min="1" step="0.01" required></label>
+          <button id="send" type="submit">Enviar transferencia</button>
+        </form>
+        <div id="message"></div>
+        <div class="route-box">La operación viaja desde AWS hacia el core local usando la red privada de Tailscale.</div>
+      </article>
+    </section>
+
+    <footer>Laboratorio Formatec · Arquitectura híbrida con AWS, Kubernetes y Tailscale</footer>
+  </main>
+  <script>
+    const money = value => new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS'}).format(Number(value));
+    async function refresh() {
+      try {
+        const [status, accounts] = await Promise.all([fetch('/api/status'), fetch('/api/accounts')]);
+        if (!status.ok || !accounts.ok) throw new Error('core unavailable');
+        const meta = await status.json();
+        const rows = await accounts.json();
+        document.querySelector('#core-dot').className='dot ok';
+        document.querySelector('#core-text').textContent='Core local disponible';
+        document.querySelector('#route').textContent='AWS ' + meta.frontend + ' → Tailscale → ' + meta.core_pod;
+        for (const row of rows) {
+          const balance=document.querySelector('#balance-' + row.id);
+          const holder=document.querySelector('#holder-' + row.id);
+          if (balance) balance.textContent=money(row.balance);
+          if (holder) holder.textContent=row.holder + ' · cuenta ' + row.id;
+        }
+        document.querySelector('#send').disabled=false;
+      } catch (_) {
+        document.querySelector('#core-dot').className='dot bad';
+        document.querySelector('#core-text').textContent='Core bancario sin conexión';
+        document.querySelector('#route').textContent='El frontend sigue activo en AWS';
+        document.querySelector('#send').disabled=true;
+      }
+    }
+    document.querySelector('#transfer-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const message=document.querySelector('#message');
+      message.textContent='Procesando...';
+      const body={from_id:Number(from.value),to_id:Number(to.value),amount:Number(amount.value)};
+      const idempotencyKey=typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      try {
+        const response=await fetch('/api/transfers',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Idempotency-Key':idempotencyKey},
+          body:JSON.stringify(body)
+        });
+        const payload=await response.json();
+        if (!response.ok) throw new Error(payload.message || 'No se pudo completar la operación');
+        message.textContent='Transferencia ' + payload.transfer_id + ' confirmada por ' + payload.core_pod;
+        await refresh();
+      } catch (error) {
+        message.textContent=error.message;
+      }
+    });
+    refresh();
+    setInterval(refresh,10000);
+  </script>
+</body>
+</html>

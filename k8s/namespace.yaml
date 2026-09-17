@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: formatec-bank
+  labels:
+    app.kubernetes.io/part-of: formatec-m5-hybrid-lab
+
